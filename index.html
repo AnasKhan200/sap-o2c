@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SAP O2C Simulator — TechMart India</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #060D1A;
+  --surface:  #0C1829;
+  --card:     #101F35;
+  --border:   #1A3050;
+  --accent:   #0EA5E9;
+  --accent2:  #38BDF8;
+  --gold:     #F59E0B;
+  --green:    #10B981;
+  --red:      #EF4444;
+  --text:     #E2EAF4;
+  --muted:    #6B8CAE;
+  --mono:     'IBM Plex Mono', monospace;
+  --sans:     'IBM Plex Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* ── grid bg ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:40px 40px;opacity:.25;pointer-events:none;z-index:0;
+}
+
+/* ── header ── */
+header{
+  position:relative;z-index:10;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,#0A1525 0%,transparent 100%);
+  padding:0 32px;
+  display:flex;align-items:center;justify-content:space-between;height:64px;
+}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;font-size:13px;color:#fff}
+.logo-text{font-weight:700;font-size:16px;letter-spacing:.02em}
+.logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.badge{background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.3);
+  color:var(--accent2);font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px}
+
+/* ── layout ── */
+.shell{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:32px 24px}
+
+/* ── hero ── */
+.hero{text-align:center;margin-bottom:48px;animation:fadeUp .6s ease both}
+.hero h1{font-size:clamp(28px,5vw,52px);font-weight:700;line-height:1.1;
+  background:linear-gradient(135deg,#fff 30%,var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{margin-top:12px;color:var(--muted);font-size:15px;max-width:600px;margin-inline:auto}
+.meta-row{display:flex;gap:20px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.meta-pill{background:var(--card);border:1px solid var(--border);
+  padding:6px 14px;border-radius:20px;font-size:12px;font-family:var(--mono);color:var(--muted)}
+.meta-pill span{color:var(--text)}
+
+/* ── pipeline ── */
+.pipeline{display:flex;align-items:center;justify-content:center;
+  gap:0;margin-bottom:48px;overflow-x:auto;padding:8px 0;flex-wrap:nowrap}
+.step-node{
+  position:relative;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  cursor:pointer;padding:12px 8px;border-radius:12px;transition:background .2s;
+  min-width:90px;
+}
+.step-node:hover{background:rgba(14,165,233,.06)}
+.step-node.active{background:rgba(14,165,233,.1)}
+.step-node.done .node-circle{background:var(--green);border-color:var(--green);color:#fff}
+.step-node.active .node-circle{border-color:var(--accent);box-shadow:0 0 0 4px rgba(14,165,233,.2)}
+.node-circle{
+  width:44px;height:44px;border-radius:50%;
+  border:2px solid var(--border);background:var(--card);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:13px;font-weight:600;color:var(--muted);
+  transition:all .3s;
+}
+.step-node.active .node-circle{color:var(--accent)}
+.node-label{font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;font-family:var(--mono)}
+.step-node.active .node-label,.step-node.done .node-label{color:var(--text)}
+.connector{width:32px;height:2px;background:var(--border);flex-shrink:0;margin-bottom:20px;transition:background .4s}
+.connector.lit{background:var(--green)}
+
+/* ── main panels ── */
+.panels{display:grid;grid-template-columns:1fr 380px;gap:24px}
+@media(max-width:860px){.panels{grid-template-columns:1fr}}
+
+/* ── transaction panel ── */
+.tx-panel{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.tx-header{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.tx-title{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.tx-title strong{color:var(--accent);font-size:15px;display:block;margin-top:2px}
+.tx-status{display:flex;align-items:center;gap:6px;font-size:12px;font-family:var(--mono)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.green{background:var(--green);box-shadow:0 0 8px var(--green)}
+.dot.blue{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 1.5s infinite}
+.tx-body{padding:24px}
+
+/* ── form fields ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+@media(max-width:500px){.form-grid{grid-template-columns:1fr}}
+.field label{display:block;font-size:10px;font-family:var(--mono);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.field input,.field select{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:13px;
+  padding:9px 12px;border-radius:8px;outline:none;transition:border .2s;
+}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field input[readonly]{color:var(--muted);cursor:default}
+.field.full{grid-column:1/-1}
+
+/* ── result box ── */
+.result-box{
+  border:1px solid var(--green);background:rgba(16,185,129,.07);
+  border-radius:10px;padding:16px;margin-top:16px;display:none;
+  animation:fadeUp .3s ease both;
+}
+.result-box.show{display:block}
+.result-box .doc-no{font-family:var(--mono);font-size:20px;font-weight:600;color:var(--green)}
+.result-box .doc-label{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:4px}
+.result-detail{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.7}
+.result-detail strong{color:var(--text)}
+
+/* ── btn ── */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 24px;border-radius:8px;border:none;cursor:pointer;
+  font-family:var(--mono);font-size:13px;font-weight:600;transition:all .2s;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(14,165,233,.3)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── sidebar ── */
+.sidebar{display:flex;flex-direction:column;gap:16px}
+
+/* ── doc flow ── */
+.doc-flow{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+.panel-title{font-size:11px;font-family:var(--mono);text-transform:uppercase;
+  letter-spacing:.1em;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.panel-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px}
+.flow-item{display:flex;gap:12px;margin-bottom:4px;animation:fadeUp .3s ease both}
+.flow-line{display:flex;flex-direction:column;align-items:center}
+.flow-dot{width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0;margin-top:3px}
+.flow-dot.done{background:var(--green)}
+.flow-dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.flow-connector-v{width:1px;flex:1;background:var(--border);min-height:20px;margin:2px auto}
+.flow-info .doc-id{font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600}
+.flow-info .doc-meta{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ── summary cards ── */
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--surface);border-radius:10px;padding:12px;border:1px solid var(--border)}
+.kpi-val{font-family:var(--mono);font-size:20px;font-weight:600;color:var(--accent)}
+.kpi-val.green{color:var(--green)}
+.kpi-label{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
+
+/* ── success overlay ── */
+.success-overlay{
+  display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(6,13,26,.9);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;flex-direction:column;gap:24px;
+  animation:fadeIn .4s ease;
+}
+.success-overlay.show{display:flex}
+.success-icon{font-size:80px;animation:bounceIn .6s ease}
+.success-title{font-size:32px;font-weight:700;color:var(--green)}
+.success-sub{color:var(--muted);font-family:var(--mono);font-size:14px;text-align:center;line-height:1.8}
+.confetti-row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;max-width:500px}
+.confetti-item{background:var(--card);border:1px solid var(--green);
+  border-radius:8px;padding:8px 14px;font-family:var(--mono);font-size:12px;color:var(--green)}
+
+/* ── log ── */
+.log-panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+.log-body{font-family:var(--mono);font-size:11px;max-height:180px;overflow-y:auto;line-height:1.9}
+.log-line{padding:2px 0;border-bottom:1px solid rgba(26,48,80,.4)}
+.log-line .ts{color:var(--muted)}
+.log-line .msg{color:var(--text)}
+.log-line.success .msg{color:var(--green)}
+.log-line.info .msg{color:var(--accent)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes bounceIn{0%{transform:scale(0)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">SAP</div>
+    <div>
+      <div class="logo-text">TechMart India Pvt. Ltd.</div>
+      <div class="logo-sub">S/4HANA · Sales & Distribution</div>
+    </div>
+  </div>
+  <div class="badge">O2C SIMULATOR</div>
+</header>
+
+<div class="shell">
+
+  <div class="hero">
+    <h1>Order-to-Cash<br/>Complete Sales Cycle</h1>
+    <p>Simulating the end-to-end SAP SD process — from customer inquiry to final payment receipt</p>
+    <div class="meta-row">
+      <div class="meta-pill">Student: <span>Anas Khan</span></div>
+      <div class="meta-pill">Roll No: <span>24057009</span></div>
+      <div class="meta-pill">Institute: <span>KIIT University</span></div>
+      <div class="meta-pill">Module: <span>SAP SD</span></div>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="pipeline" id="pipeline">
+    <div class="step-node active" id="node-0" onclick="goStep(0)">
+      <div class="node-circle">VA11</div>
+      <div class="node-label">Inquiry</div>
+    </div>
+    <div class="connector" id="conn-0"></div>
+    <div class="step-node" id="node-1" onclick="goStep(1)">
+      <div class="node-circle">VA21</div>
+      <div class="node-label">Quotation</div>
+    </div>
+    <div class="connector" id="conn-1"></div>
+    <div class="step-node" id="node-2" onclick="goStep(2)">
+      <div class="node-circle">VA01</div>
+      <div class="node-label">Sales Order</div>
+    </div>
+    <div class="connector" id="conn-2"></div>
+    <div class="step-node" id="node-3" onclick="goStep(3)">
+      <div class="node-circle">VL01N</div>
+      <div class="node-label">Delivery</div>
+    </div>
+    <div class="connector" id="conn-3"></div>
+    <div class="step-node" id="node-4" onclick="goStep(4)">
+      <div class="node-circle">VF01</div>
+      <div class="node-label">Billing</div>
+    </div>
+    <div class="connector" id="conn-4"></div>
+    <div class="step-node" id="node-5" onclick="goStep(5)">
+      <div class="node-circle">F-28</div>
+      <div class="node-label">Payment</div>
+    </div>
+  </div>
+
+  <div class="panels">
+
+    <!-- Transaction Panel -->
+    <div class="tx-panel" id="txPanel">
+      <div class="tx-header">
+        <div class="tx-title" id="txTitle">
+          <span>Transaction</span>
+          <strong>VA11 — Create Customer Inquiry</strong>
+        </div>
+        <div class="tx-status">
+          <div class="dot blue" id="statusDot"></div>
+          <span id="statusText">Ready</span>
+        </div>
+      </div>
+      <div class="tx-body" id="txBody">
+        <!-- injected by JS -->
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Document Flow -->
+      <div class="doc-flow">
+        <div class="panel-title">Document Flow</div>
+        <div id="docFlow">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:20px 0">
+            Execute steps to see document flow
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="summary-card">
+        <div class="panel-title">Order Summary</div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-val" id="kpiQty">—</div><div class="kpi-label">Units</div></div>
+          <div class="kpi"><div class="kpi-val" id="kpiPrice">—</div><div class="kpi-label">Unit Price</div></div>
+          <div class="kpi"><div class="kpi-val" id="kpiDisc">—</div><div class="kpi-label">Discount</div></div>
+          <div class="kpi"><div class="kpi-val green" id="kpiTotal">—</div><div class="kpi-label">Net Total</div></div>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="log-panel">
+        <div class="panel-title">System Log</div>
+        <div class="log-body" id="sysLog">
+          <div class="log-line info"><span class="ts">[00:00:00]</span> <span class="msg"> SAP S/4HANA initialized</span></div>
+          <div class="log-line info"><span class="ts">[00:00:01]</span> <span class="msg"> SD module loaded — Sales Org 1000</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-icon">✅</div>
+  <div class="success-title">O2C Cycle Complete!</div>
+  <div class="success-sub">
+    All 6 steps executed successfully<br/>
+    Customer account cleared · AR posting done · Stock updated
+  </div>
+  <div class="confetti-row" id="confettiDocs"></div>
+  <button class="btn btn-ghost" onclick="resetAll()" style="margin-top:8px">↺ Run Again</button>
+</div>
+
+<script>
+const steps = [
+  {
+    tcode: "VA11",
+    title: "Create Customer Inquiry",
+    desc: "Customer contacts TechMart enquiring about Laptop Model X200.",
+    docType: "Inquiry",
+    docPrefix: "10",
+    fields: `
+      <div class="form-grid">
+        <div class="field"><label>Inquiry Type</label><input value="IN" readonly/></div>
+        <div class="field"><label>Sales Organisation</label><input value="1000" readonly/></div>
+        <div class="field"><label>Distribution Channel</label><input value="10 — Wholesale" readonly/></div>
+        <div class="field"><label>Division</label><input value="00 — Cross-Division" readonly/></div>
+        <div class="field full"><label>Sold-To Party</label><input id="f-soldto" value="CUST-001 — Rahul Electronics" readonly/></div>
+        <div class="field"><label>Material</label><input value="MAT-X200 — Laptop Model X200" readonly/></div>
+        <div class="field"><label>Quantity</label><input id="f-qty" type="number" value="50" min="1"/></div>
+        <div class="field"><label>Requested Delivery Date</label><input type="date" id="f-rdd"/></div>
+      </div>`,
+    onExec: () => {
+      state.qty = parseInt(document.getElementById('f-qty').value) || 50;
+      addKpi();
+    },
+    result: () => `Inquiry document created for <strong>${state.qty} units</strong> of Laptop Model X200.<br/>Customer: Rahul Electronics · Req. Delivery: ${state.rdd}`
+  },
+  {
+    tcode: "VA21",
+    title: "Create Quotation",
+    desc: "Formal quotation generated from inquiry with auto-pricing.",
+    docType: "Quotation",
+    docPrefix: "20",
+    fields: `
+      <div class="form-grid">
+        <div class="field"><label>Quotation Type</label><input value="QT" readonly/></div>
+        <div class="field"><label>Reference Inquiry</label><input id="f-ref-inq" readonly/></div>
+        <div class="field"><label>Valid From</label><input type="date" id="f-vfrom"/></div>
+        <div class="field"><label>Valid To</label><input type="date" id="f-vto"/></div>
+        <div class="field"><label>Pricing Procedure</label><input value="ZVKOND" readonly/></div>
+        <div class="field"><label>PR00 Base Price / Unit</label><input id="f-price" type="number" value="45000"/></div>
+        <div class="field"><label>K007 Customer Discount %</label><input id="f-disc" type="number" value="5" min="0" max="30"/></div>
+        <div class="field"><label>MWST Output Tax %</label><input value="18" readonly/></div>
+      </div>`,
+    onExec: () => {
+      state.price = parseFloat(document.getElementById('f-price').value) || 45000;
+      state.disc  = parseFloat(document.getElementById('f-disc').value) || 5;
+      state.tax   = 18;
+      const net = state.qty * state.price * (1 - state.disc/100);
+      state.net = net;
+      state.gross = net * (1 + state.tax/100);
+      document.getElementById('kpiPrice').textContent = '₹'+state.price.toLocaleString('en-IN');
+      document.getElementById('kpiDisc').textContent  = state.disc+'%';
+      document.getElementById('kpiTotal').textContent = '₹'+(state.gross/100000).toFixed(2)+'L';
+    },
+    result: () => `Quotation issued · Base: ₹${state.price.toLocaleString('en-IN')}/unit · Disc: ${state.disc}% · Tax: 18%<br/>
+      <strong>Gross Total: ₹${state.gross.toLocaleString('en-IN',{maximumFractionDigits:0})}</strong>`
+  },
+  {
+    tcode: "VA01",
+    title: "Create Sales Order",
+    desc: "Customer confirms. Standard sales order (type OR) created.",
+    docType: "Sales Order",
+    docPrefix: "OR",
+    fields: `
+      <div class="form-grid">
+        <div class="field"><label>Order Type</label><input value="OR — Standard Order" readonly/></div>
+        <div class="field"><label>Reference Quotation</label><input id="f-ref-qt" readonly/></div>
+        <div class="field"><label>Payment Terms</label><input value="NET30" readonly/></div>
+        <div class="field"><label>Incoterms</label><input value="CIF Mumbai" readonly/></div>
+        <div class="field"><label>ATP Check</label><input value="✅ Stock Available — 50 Units" readonly/></div>
+        <div class="field"><label>Credit Check (OVA8)</label><input id="f-credit" value="✅ Passed — Within Limit" readonly/></div>
+        <div class="field"><label>Confirmed Qty</label><input id="f-conf-qty" readonly/></div>
+        <div class="field"><label>Confirmed Delivery</label><input id="f-conf-del" type="date" readonly/></div>
+      </div>`,
+    onExec: () => {},
+    result: () => `Sales Order confirmed · ${state.qty} units · ATP & Credit checks passed<br/>
+      <strong>Order Value (Gross): ₹${state.gross.toLocaleString('en-IN',{maximumFractionDigits:0})}</strong>`
+  },
+  {
+    tcode: "VL01N",
+    title: "Create Outbound Delivery",
+    desc: "Warehouse picks goods and posts Goods Issue (GI).",
+    docType: "Delivery",
+    docPrefix: "80",
+    fields: `
+      <div class="form-grid">
+        <div class="field"><label>Shipping Point</label><input value="SP01 — Mumbai Warehouse" readonly/></div>
+        <div class="field"><label>Reference Sales Order</label><input id="f-ref-so" readonly/></div>
+        <div class="field"><label>Delivery Type</label><input value="LF — Outbound Delivery" readonly/></div>
+        <div class="field"><label>Pick Quantity</label><input id="f-pick" readonly/></div>
+        <div class="field"><label>Storage Location</label><input value="SL01 — Main Store" readonly/></div>
+        <div class="field"><label>Movement Type</label><input value="601 — GI for Delivery" readonly/></div>
+        <div class="field"><label>Post Goods Issue</label><input value="✅ Stock Reduced · COGS Posted in FI" readonly/></div>
+        <div class="field"><label>GI Date</label><input type="date" id="f-gi-date" readonly/></div>
+      </div>`,
+    onExec: () => {},
+    result: () => `Goods Issue posted · ${state.qty} units dispatched · Inventory reduced<br/><strong>COGS debit auto-posted in FI</strong>`
+  },
+  {
+    tcode: "VF01",
+    title: "Create Billing Document",
+    desc: "Invoice (F2) created. AR posting auto-generated in FI.",
+    docType: "Invoice",
+    docPrefix: "90",
+    fields: `
+      <div class="form-grid">
+        <div class="field"><label>Billing Type</label><input value="F2 — Invoice" readonly/></div>
+        <div class="field"><label>Reference Delivery</label><input id="f-ref-del" readonly/></div>
+        <div class="field"><label>Billing Date</label><input type="date" id="f-bill-date" readonly/></div>
+        <div class="field"><label>Net Value</label><input id="f-net-val" readonly/></div>
+        <div class="field"><label>Tax Amount (18%)</label><input id="f-tax-amt" readonly/></div>
+        <div class="field"><label>Gross Amount</label><input id="f-gross-val" readonly/></div>
+        <div class="field"><label>FI Posting</label><input value="Dr. Customer A/R · Cr. Revenue" readonly/></div>
+        <div class="field"><label>Accounting Doc</label><input id="f-acc-doc" readonly/></div>
+      </div>`,
+    onExec: () => {},
+    result: () => `Invoice raised · Net: ₹${state.net.toLocaleString('en-IN',{maximumFractionDigits:0})} · 
+      Tax: ₹${(state.gross-state.net).toLocaleString('en-IN',{maximumFractionDigits:0})}<br/>
+      <strong>Gross: ₹${state.gross.toLocaleString('en-IN',{maximumFractionDigits:0})} · FI AR posted automatically</strong>`
+  },
+  {
+    tcode: "F-28",
+    title: "Post Incoming Payment",
+    desc: "Customer pays. Open item cleared. O2C cycle closes.",
+    docType: "Payment",
+    docPrefix: "15",
+    fields: `
+      <div class="form-grid">
+        <div class="field"><label>Transaction</label><input value="F-28 — Post Incoming Payment" readonly/></div>
+        <div class="field"><label>Document Date</label><input type="date" id="f-pay-date" readonly/></div>
+        <div class="field"><label>Company Code</label><input value="1000 — TechMart India Pvt. Ltd." readonly/></div>
+        <div class="field"><label>Currency</label><input value="INR" readonly/></div>
+        <div class="field"><label>Bank Account</label><input value="HDFC-MAIN-001" readonly/></div>
+        <div class="field"><label>Amount Received</label><input id="f-pay-amt" readonly/></div>
+        <div class="field"><label>Reference Invoice</label><input id="f-ref-inv" readonly/></div>
+        <div class="field"><label>Clearing Status</label><input value="✅ Open Item Cleared" readonly/></div>
+      </div>`,
+    onExec: () => {},
+    result: () => `Payment of ₹${state.gross.toLocaleString('en-IN',{maximumFractionDigits:0})} received & posted<br/>
+      <strong>Customer A/R cleared · O2C cycle complete ✅</strong>`
+  }
+];
+
+const state = {
+  current: 0,
+  done: [],
+  docs: [],
+  qty: 50,
+  price: 45000,
+  disc: 5,
+  tax: 18,
+  net: 0,
+  gross: 0,
+  rdd: ''
+};
+
+// set default dates
+function initDates(){
+  const today = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+  const add = n => { const d=new Date(today); d.setDate(d.getDate()+n); return fmt(d); };
+  const trySet = (id,val) => { const el=document.getElementById(id); if(el) el.value=val; };
+  trySet('f-rdd', add(7));
+  trySet('f-vfrom', fmt(today));
+  trySet('f-vto', add(30));
+  trySet('f-gi-date', add(5));
+  trySet('f-bill-date', add(6));
+  trySet('f-pay-date', add(36));
+  state.rdd = add(7);
+}
+
+function addKpi(){
+  document.getElementById('kpiQty').textContent = state.qty+' pcs';
+}
+
+function renderStep(i){
+  const s = steps[i];
+  document.getElementById('txTitle').innerHTML = `<span>Transaction</span><strong>${s.tcode} — ${s.title}</strong>`;
+  document.getElementById('statusDot').className = 'dot blue';
+  document.getElementById('statusText').textContent = 'Ready';
+
+  const body = document.getElementById('txBody');
+  body.innerHTML = `
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px">${s.desc}</p>
+    ${s.fields}
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-primary" id="execBtn" onclick="execStep(${i})">▶ Execute ${s.tcode}</button>
+      ${i>0?`<button class="btn btn-ghost" onclick="goStep(${i-1})">← Back</button>`:''}
+    </div>
+    <div class="result-box" id="resultBox">
+      <div class="doc-label">Document Created</div>
+      <div class="doc-no" id="docNo"></div>
+      <div class="result-detail" id="resultDetail"></div>
+      ${i<5?`<button class="btn btn-primary" style="margin-top:14px" onclick="goStep(${i+1})">Next: ${steps[i+1].tcode} →</button>`:''}
+    </div>`;
+
+  initDates();
+  prefillRefs(i);
+
+  // mark nodes
+  for(let j=0;j<6;j++){
+    const n = document.getElementById(`node-${j}`);
+    n.className = 'step-node' + (state.done.includes(j)?' done':'') + (j===i?' active':'');
+  }
+  for(let j=0;j<5;j++){
+    document.getElementById(`conn-${j}`).className = 'connector' + (state.done.includes(j+1)||state.done.length>j+1?' lit':'');
+  }
+
+  if(state.done.includes(i)) showResult(i);
+}
+
+function prefillRefs(i){
+  const trySet = (id,val) => { const el=document.getElementById(id); if(el) el.value=val; };
+  if(i>=1 && state.docs[0]) trySet('f-ref-inq', state.docs[0]);
+  if(i>=2 && state.docs[1]) trySet('f-ref-qt',  state.docs[1]);
+  if(i>=2){ trySet('f-conf-qty', state.qty+' units'); trySet('f-conf-del', document.getElementById('f-rdd')?.value||''); }
+  if(i>=3 && state.docs[2]) trySet('f-ref-so', state.docs[2]);
+  if(i>=3) trySet('f-pick', state.qty+' units');
+  if(i>=4 && state.docs[3]) trySet('f-ref-del', state.docs[3]);
+  if(i>=4){
+    const net = state.qty*state.price*(1-state.disc/100);
+    trySet('f-net-val',   '₹'+net.toLocaleString('en-IN',{maximumFractionDigits:0}));
+    trySet('f-tax-amt',   '₹'+(net*0.18).toLocaleString('en-IN',{maximumFractionDigits:0}));
+    trySet('f-gross-val', '₹'+state.gross.toLocaleString('en-IN',{maximumFractionDigits:0}));
+    trySet('f-acc-doc', 'FI-ACC-'+randomDoc('50'));
+  }
+  if(i>=5 && state.docs[4]) trySet('f-ref-inv', state.docs[4]);
+  if(i>=5) trySet('f-pay-amt', '₹'+state.gross.toLocaleString('en-IN',{maximumFractionDigits:0}));
+}
+
+function randomDoc(prefix){ return prefix + Math.floor(1000+Math.random()*8999); }
+
+function execStep(i){
+  steps[i].onExec();
+  const docNo = randomDoc(steps[i].docPrefix);
+  state.docs[i] = docNo;
+  if(!state.done.includes(i)) state.done.push(i);
+
+  addLog(`${steps[i].tcode} executed → Doc: ${docNo}`, 'success');
+  updateDocFlow();
+  showResult(i);
+
+  document.getElementById('statusDot').className = 'dot green';
+  document.getElementById('statusText').textContent = 'Posted';
+
+  // mark node done
+  document.getElementById(`node-${i}`).classList.add('done');
+  if(i<5) document.getElementById(`conn-${i}`).classList.add('lit');
+
+  if(i===5) setTimeout(()=>showSuccess(),800);
+}
+
+function showResult(i){
+  const box = document.getElementById('resultBox');
+  if(!box) return;
+  box.classList.add('show');
+  document.getElementById('docNo').textContent = steps[i].docType+' #'+state.docs[i];
+  document.getElementById('resultDetail').innerHTML = steps[i].result();
+}
+
+function goStep(i){
+  if(i < state.current && !state.done.includes(i-1) && i>0) return;
+  state.current = i;
+  renderStep(i);
+}
+
+function addLog(msg, type='info'){
+  const log = document.getElementById('sysLog');
+  const now = new Date();
+  const ts = [now.getHours(),now.getMinutes(),now.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  const div = document.createElement('div');
+  div.className = `log-line ${type}`;
+  div.innerHTML = `<span class="ts">[${ts}]</span> <span class="msg"> ${msg}</span>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function updateDocFlow(){
+  const flow = document.getElementById('docFlow');
+  flow.innerHTML = '';
+  const labels = ['Inquiry','Quotation','Sales Order','Delivery','Invoice','Payment'];
+  for(let i=0;i<6;i++){
+    if(!state.docs[i] && !state.done.includes(i)) continue;
+    const isDone = state.done.includes(i);
+    const isActive = i === state.current;
+    const div = document.createElement('div');
+    div.className = 'flow-item';
+    div.style.animationDelay = (i*0.05)+'s';
+    div.innerHTML = `
+      <div class="flow-line">
+        <div class="flow-dot ${isDone?'done':isActive?'active':''}"></div>
+        ${i<5&&state.docs[i+1]?'<div class="flow-connector-v"></div>':''}
+      </div>
+      <div class="flow-info">
+        <div class="doc-id">${steps[i].docType} #${state.docs[i]||'—'}</div>
+        <div class="doc-meta">${steps[i].tcode} · ${labels[i]}</div>
+      </div>`;
+    flow.appendChild(div);
+  }
+}
+
+function showSuccess(){
+  const overlay = document.getElementById('successOverlay');
+  overlay.classList.add('show');
+  const row = document.getElementById('confettiDocs');
+  row.innerHTML = state.docs.map((d,i)=>`<div class="confetti-item">${steps[i].tcode}: ${d}</div>`).join('');
+}
+
+function resetAll(){
+  state.current=0; state.done=[]; state.docs=[];
+  state.qty=50; state.price=45000; state.disc=5; state.net=0; state.gross=0;
+  document.getElementById('successOverlay').classList.remove('show');
+  document.getElementById('kpiQty').textContent='—';
+  document.getElementById('kpiPrice').textContent='—';
+  document.getElementById('kpiDisc').textContent='—';
+  document.getElementById('kpiTotal').textContent='—';
+  document.getElementById('docFlow').innerHTML='<div style="font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:20px 0">Execute steps to see document flow</div>';
+  for(let j=0;j<6;j++) document.getElementById(`node-${j}`).className='step-node'+(j===0?' active':'');
+  for(let j=0;j<5;j++) document.getElementById(`conn-${j}`).className='connector';
+  renderStep(0);
+  addLog('System reset — new O2C cycle started','info');
+}
+
+// init
+renderStep(0);
+addLog('O2C Cycle ready — begin with VA11','info');
+</script>
+</body>
+</html>
